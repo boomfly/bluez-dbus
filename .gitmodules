@@ -1,0 +1,3 @@
+[submodule "lib/node-dbus-next"]
+	path = lib/node-dbus-next
+	url = https://github.com/boomfly/node-dbus-next.git
