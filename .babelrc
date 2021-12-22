@@ -1,0 +1,9 @@
+{
+  "compact": false,
+  "presets": ["@babel/preset-env"],
+  "plugins": [
+    "@babel/transform-runtime",
+    "@babel/plugin-proposal-optional-chaining",
+    ["@babel/plugin-proposal-decorators", {"decoratorsBeforeExport": true}]
+  ]
+}
