@@ -18,7 +18,7 @@
     "dev": "export $(cat .env | egrep -v '#|^$' | xargs); DEBUG=bluez-dbus:* DEBUG_COLORS=true npx nodemon --ignore dist/public/ dist/index.js",
     "clean": "rm -rf dist/*",
     "link": "npm run link-node-dbus-next",
-    "link-node-dbus-next": "rm -rf $PWD/node_modules/node-dbus-next && ln -s $PWD/imports/ui/lib/node-dbus-next $PWD/node_modules/node-dbus-next"
+    "link-node-dbus-next": "rm -rf $PWD/node_modules/dbus-next && ln -s $PWD/lib/node-dbus-next $PWD/node_modules/dbus-next"
   },
   "author": "",
   "license": "ISC",

@@ -36,6 +36,8 @@ async function main() {
   // console.log(await adapter.address())
   let adapters = await Bluez.adapters()
 
+  // console.log('found adapters', adapters)
+
   let defaultAdapter = adapters[0]
   let gattManager = defaultAdapter.gattManager()
 
