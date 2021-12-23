@@ -97,7 +97,7 @@ export class GattLocalCharacteristic extends Interface {
 
   @method({inSignature: 'a{sv}', outSignature: 'ay'})
   ReadValue(options) {
-    console.log('GattLocalCharacteristic::ReadValue', options)
+    console.log('GattLocalCharacteristic::ReadValue', this._path, options)
     return Buffer.from(this._value)
   }
 

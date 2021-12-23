@@ -25,8 +25,8 @@ export class Advertisement extends Interface {
       duration = 2,
       timeout = 2,
       secondaryChannel = '1M',
-      minInterval = 1000,
-      maxInterval = 2000,
+      minInterval = 200,
+      maxInterval = 200,
       txPower = -70,
 
     } = advertisement
@@ -49,6 +49,9 @@ export class Advertisement extends Interface {
     this._minInterval = minInterval
     this._maxInterval = maxInterval
     this._txPower = txPower
+    for (let propertyName in advertisement) {
+      this[propertyName] = advertisement[propertyName]
+    }
   }
 
   @method({inSignature: '', outSignature: ''})
@@ -67,11 +70,9 @@ export class Advertisement extends Interface {
   }
 
   // @property({signature: 'a{nay}'})
-  @property({signature: 'a{sv}'})
+  @property({signature: 'a{qv}'})
   get ManufacturerData() {
-    console.log('advertisement::ManufacturerData get', this._manufaturerData)
     return this._manufaturerData
-    // return 'a'
   }
 
   @property({signature: 'as'})

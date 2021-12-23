@@ -47,24 +47,27 @@ export class Bluez {
     for (let adapterObject of this._proxyObject.nodes) {
       nodes.push({
         object: adapterObject,
-        objectProxyPromise: bus.getProxyObject(Bluez.service, adapterObject)
+        // objectProxyPromise: bus.getProxyObject(Bluez.service, adapterObject)
+        adapterPromise: Adapter.from(bus.getProxyObject(Bluez.service, adapterObject))
       })
     }
     let nodesResults = await Promise.all(
       nodes.map(
-        (n) => n.objectProxyPromise
+        // (n) => n.objectProxyPromise
+        (n) => n.adapterPromise
       )
     )
-    nodesResults.forEach(
-      (n, i) => nodes[i].objectProxy = n
-    )
+    // nodesResults.forEach(
+    //   (n, i) => nodes[i].objectProxy = n
+    // )
     // console.log('nodesResult', nodes)
-    let adapters = []
-    for (let nodeResult of nodes) {
-      adapters.push(
-        new Adapter(nodeResult.objectProxy)
-      )
-    }
+    // let adapters = []
+    // for (let nodeResult of nodes) {
+    //   adapters.push(
+    //     new Adapter(nodeResult.objectProxy)
+    //   )
+    // }
+    const adapters = nodesResults.map((n) => n)
     return adapters
   }
 

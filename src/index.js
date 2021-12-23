@@ -9,7 +9,7 @@ const servicePath = process.env.BT_SERVICE_PATH || '/org/smart'
 
 const primaryServiceUUID = 'dcf49b3d-87c7-4990-8820-9603864ef64a'
 const characteristicUUID = '707b9c2e-7281-411d-a909-d503b8f9b2c3'
-
+const characteristicUUID2 = '1435d194-2b2c-40fb-af17-e137c03329e8'
 // const dbus = require('dbus-next')
 // const bus = dbus.systemBus({negotiateUnixFd: null})
 // const Variant = dbus.Variant
@@ -33,7 +33,6 @@ async function main() {
 
   // let adapter = new Adapter(bus, '/org/bluez/hci0')
 
-  // console.log(await adapter.address())
   let adapters = await Bluez.adapters()
 
   // console.log('found adapters', adapters)
@@ -41,6 +40,7 @@ async function main() {
   let defaultAdapter = adapters[0]
   let gattManager = defaultAdapter.gattManager()
 
+  // console.log('adapter props', await defaultAdapter.address())
   // console.log('adapters', await adapters[0].gattManager(), servicePath)
 
   let bus = Bluez.getBus()
@@ -66,13 +66,28 @@ async function main() {
   //   console.log('got a message: ', msg);
   // });
 
+
   defaultAdapter.setSerivces([
+    // new GattLocalService({
+    //   uuid: '1800',
+    //   primary: true,
+    //   characteristics: [
+    //     new GattLocalCharacteristic({
+    //       uuid: '00002A00-0000-1000-8000-00805F9B34FB',
+    //       flags: ['read']
+    //     }),
+    //   ]
+    // }),
     new GattLocalService({
       uuid: primaryServiceUUID,
       primary: true,
       characteristics: [
         new GattLocalCharacteristic({
           uuid: characteristicUUID,
+          flags: ['read', 'write', 'notify', 'indicate']
+        }),
+        new GattLocalCharacteristic({
+          uuid: characteristicUUID2,
           flags: ['read', 'write', 'notify', 'indicate']
         })
       ]

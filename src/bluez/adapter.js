@@ -1,16 +1,35 @@
 import {GattLocalObjectManager} from './service'
 import {Advertisement} from './advertisement'
 import dbus from 'dbus-next'
+import {EventEmitter} from 'events'
+import { ConsoleMessage } from 'puppeteer-core'
 const {Variant} = dbus
 
-export class Adapter {
-  constructor(objectProxy) {
-    this._interface = 'org.bluez.Adapter1'
+export class Adapter extends EventEmitter {
+  static interface = 'org.bluez.Adapter1'
+
+  static async from(objectProxy) {
+    if (objectProxy instanceof Promise) {
+      objectProxy = await objectProxy
+    }
+    const propertiesProxy = objectProxy.getInterface('org.freedesktop.DBus.Properties')
+    const properties = await propertiesProxy.GetAll(Adapter.interface)
+
+    const adapter = new Adapter(objectProxy, properties)
+    return adapter
+  }
+
+  constructor(objectProxy, properties) {
+    super()
+    this._interface = Adapter.interface
     this._objectProxy = objectProxy
     this._interfaceProxy = this._objectProxy.getInterface(this._interface)
     this._propertiesProxy = this._objectProxy.getInterface('org.freedesktop.DBus.Properties')
     this._gattManagerProxy = this._objectProxy.getInterface('org.bluez.GattManager1')
     this._advertisingManagerProxy = this._objectProxy.getInterface('org.bluez.LEAdvertisingManager1')
+
+    this._bus = this._objectProxy.bus
+    this._properties = properties
 
     this._advertising = false
     this._advertisingServiceName = null
@@ -18,6 +37,14 @@ export class Adapter {
     this._advertisingServices = []
 
     this._discovering = false
+
+    this._propertiesProxy.on('PropertiesChanged', (iface, changed, invalidated) => {
+      for (let prop of Object.keys(changed)) {
+        // console.log(`property changed: ${prop}`, changed[prop])
+        this._properties[prop] = changed[prop]
+      }
+      this.emit('PropertiesChanged', {iface, changed, invalidated})
+    })
   }
 
   async address() {
@@ -51,95 +78,78 @@ export class Adapter {
   }
 
   async startAdvertising(name = 'org.example') {
+    // console.log('adapter::startAdvertising', )
     if (this._advertising) {
       throw new Error('errors.already_advertising')
     }
 
     this._advertisingServiceName = name
     this._advertisingServicePath = '/' + name.replace(/\./g, '/')
-
-    let bus = this._objectProxy.bus
   
-
-    await bus.requestName(this._advertisingServiceName)
+    await this._bus.requestName(this._advertisingServiceName)
 
     this._rootObject = new GattLocalObjectManager(this._advertisingServicePath)
     this._rootObject.setServices(this._services)
 
     let serviceUuids = this._services.map((service) => service.UUID)
 
-    let advertisementObject = new Advertisement({
+    class ClonedAdvertisementClass extends Advertisement {}
+
+    // let address = this._properties.Address.value.replace(/:/g, '')
+    let address = this._properties.Address.value.split(':')
+    // let addressBytes = address.map((b) => parseInt(b))
+
+    let manufaturerData = Buffer.from(address.reverse().join(''), 'hex')
+    // let manufaturerData = Buffer.from([1])
+
+    console.log('adapter::startAdvertising', address, manufaturerData)
+
+    this._advertisementObject = new ClonedAdvertisementClass({
       path: this._advertisingServicePath,
       type: 'peripheral',
       serviceUuids: serviceUuids,
       localName: 'Hello World',
       manufaturerData: {
         // [new Variant('q', 0x0059)]: new Variant('ay', Buffer.from([1, 1, 1]))
-        0x0059: new Variant('ay', Buffer.from([1, 1, 1]))
+        0x0059: new Variant('ay', manufaturerData)
       }
-      // manufaturerData: [
-      //   0x0059,
-      //   new Variant('ay', Buffer.from([1, 1, 1]))
-      // ]
-      // manufaturerData: new Variant('a{qv}', {
-      //   0x059: new Variant('ay', Buffer.from([1, 1, 1]))
-      // })
     })
+
+    // console.log('adapter::startAdvertising', this._advertisementObject.constructor.prototype.$properties)
 
     let enabledProperties = [
       'Type', 'ServiceUUIDs', 'ManufacturerData', 'LocalName']
     let $properties = {}
     for (let propName of enabledProperties) {
-      $properties[propName] = Advertisement.prototype.$properties[propName]
+      $properties[propName] = ClonedAdvertisementClass.prototype.$properties[propName]
     }
 
-    Advertisement.prototype.$properties = $properties
+    ClonedAdvertisementClass.prototype.$properties = $properties
 
     // console.log('adapter', Advertisement.prototype.$properties)
 
-    await bus.export(this._advertisingServicePath, this._rootObject)
+    await this._bus.export(this._advertisingServicePath, this._rootObject)
     for (let service of this._services) {
       let servicePath = this._advertisingServicePath + '/' + service.path
-      await bus.export(servicePath, service)
+      await this._bus.export(servicePath, service)
       for (let characteristic of service.characteristics) {
         let characteristicPath = servicePath + '/' + characteristic.path
-        await bus.export(characteristicPath, characteristic)
-        console.log('adapter::startAdvertising', characteristicPath)
+        await this._bus.export(characteristicPath, characteristic)
+        // console.log('adapter::startAdvertising', characteristicPath)
       }
     }
-    // console.log('adapter::startAdvertising export advertising')
-    await bus.export(this._advertisingServicePath, advertisementObject)
-
-    // let obj = await bus.getProxyObject('org.smart', '/org/smart/service0/char0')
-    // let ad = obj.getInterface('org.bluez.GattCharacteristic1')
-    // // let adManager = obj.getInterface('org.bluez.LEAdvertisement1')
-    // let props = obj.getInterface('org.freedesktop.DBus.Properties')
-    // console.log('adapter::startAdvertising', ad)
-    // console.log('adapter::startAdvertising', await props.Get('org.bluez.GattCharacteristic1', 'UUID'))
-    // try {
-    //   console.log('adapter::startAdvertising', await props.GetAll('org.bluez.GattCharacteristic1'))
-    // } catch (e) {
-    //   console.error(e)
-    // }
-
+    
+    await this._bus.export(this._advertisingServicePath, this._advertisementObject)
 
     await this._gattManagerProxy.RegisterApplication(this._advertisingServicePath, {})
-
-    try {
-      // console.log('adapter::startAdvertising', await this._propertiesProxy.GetAll('org.bluez.LEAdvertisingManager1'))
-      // let props = await this._propertiesProxy.GetAll('org.bluez.LEAdvertisingManager1')
-      // if (props.ActiveInstances.value > 0) {
-      //   await this._advertisingManagerProxy.UnregisterAdvertisement(this._advertisingServicePath)
-      // }
-      await this._advertisingManagerProxy.RegisterAdvertisement(this._advertisingServicePath, {})
-
-    } catch (e) {
-      console.error(e)
-    }
+    await this._advertisingManagerProxy.RegisterAdvertisement(this._advertisingServicePath, {})
   }
-
+  
   async stopAdvertising() {
-
+    await this._advertisingManagerProxy.UnregisterAdvertisement(this._advertisingServicePath)
+    await this._gattManagerProxy.UnregisterApplication(this._advertisingServicePath)
+    await this._bus.unexport(this._advertisingServicePath, this._advertisementObject)
+    await this._bus.export(this._advertisingServicePath, this._rootObject)
   }
 
   async startDiscovery() {
