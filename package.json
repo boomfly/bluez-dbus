@@ -6,9 +6,6 @@
   },
   "description": "",
   "main": "dist/index.js",
-  "bin": {
-    "bluez-dbus": "./cli.js"
-  },
   "scripts": {
     "start": "(export DEBUG=bluez-dbus:*; export DEBUG_COLORS=true; cd dist && node index.js)",
     "test": "echo \"Error: no test specified\" && exit 1",
